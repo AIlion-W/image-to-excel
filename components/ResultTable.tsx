@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface ExtractedItem {
   货号: string;
@@ -13,13 +13,24 @@ interface ExtractedItem {
 interface Props {
   data: ExtractedItem[];
   onDataChange: (data: ExtractedItem[]) => void;
+  autoFollowLatest?: boolean;
 }
 
 const FIELDS = ["货号", "内装", "单价", "尺寸"] as const;
 const PAGE_SIZE = 10;
 
-export default function ResultTable({ data, onDataChange }: Props) {
+export default function ResultTable({ data, onDataChange, autoFollowLatest }: Props) {
   const [page, setPage] = useState(0);
+  const prevLength = useRef(data.length);
+
+  // 识别过程中，新数据进来时自动跳到最后一页
+  useEffect(() => {
+    if (autoFollowLatest && data.length > prevLength.current) {
+      const lastPage = Math.max(0, Math.ceil(data.length / PAGE_SIZE) - 1);
+      setPage(lastPage);
+    }
+    prevLength.current = data.length;
+  }, [data.length, autoFollowLatest]);
 
   if (data.length === 0) return null;
 
