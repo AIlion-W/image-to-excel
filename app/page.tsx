@@ -18,6 +18,7 @@ export default function Home() {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [results, setResults] = useState<ExtractedItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState<"upload" | "result">("upload");
@@ -33,37 +34,63 @@ export default function Home() {
     }
     setLoading(true);
     setError("");
+    setResults([]);
+    setStep("result");
+    setProgress({ current: 0, total: images.length });
 
-    try {
-      const res = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          images: images.map((img) => ({
-            base64: img.base64,
-            mediaType: img.mediaType,
-            fileName: img.file.name,
-          })),
-          apiKey: apiKey || undefined,
-        }),
-      });
+    const allResults: ExtractedItem[] = [];
+    let failCount = 0;
 
-      const text = await res.text();
-      let data;
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      setProgress({ current: i + 1, total: images.length });
+
       try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error("服务器响应超时，请稍后重试或减少图片数量");
-      }
-      if (!res.ok) throw new Error(data.error);
+        const res = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            images: [
+              {
+                base64: img.base64,
+                mediaType: img.mediaType,
+                fileName: img.file.name,
+              },
+            ],
+            apiKey: apiKey || undefined,
+          }),
+        });
 
-      setResults(data.data);
-      setStep("result");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "识别失败，请重试");
-    } finally {
-      setLoading(false);
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          failCount++;
+          continue;
+        }
+        if (!res.ok) {
+          failCount++;
+          continue;
+        }
+
+        for (const item of data.data) {
+          allResults.push(item);
+        }
+        setResults([...allResults]);
+      } catch {
+        failCount++;
+      }
     }
+
+    if (failCount > 0 && allResults.length > 0) {
+      setError(`${failCount} 张图片识别失败，其余 ${allResults.length} 条已完成`);
+    } else if (allResults.length === 0) {
+      setError("全部识别失败，请检查网络或稍后重试");
+      setStep("upload");
+    }
+
+    setLoading(false);
   };
 
   const handleDownload = async () => {
@@ -131,32 +158,7 @@ export default function Home() {
                   disabled={loading}
                   className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg
-                        className="animate-spin h-5 w-5"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          fill="none"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                        />
-                      </svg>
-                      AI 识别中...
-                    </span>
-                  ) : (
-                    `开始识别（${images.length} 张图片）`
-                  )}
+                  {`开始识别（${images.length} 张图片）`}
                 </button>
               )}
             </>
@@ -164,26 +166,65 @@ export default function Home() {
 
           {step === "result" && (
             <>
+              {loading && (
+                <div className="text-center py-4">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <svg
+                      className="animate-spin h-5 w-5 text-blue-600"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                    <span className="text-blue-600 font-medium">
+                      识别中 {progress.current}/{progress.total}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${(progress.current / progress.total) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <ResultTable data={results} onDataChange={setResults} />
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setStep("upload");
-                    setResults([]);
-                  }}
-                  className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
-                >
-                  返回重新上传
-                </button>
-                <button
-                  onClick={handleDownload}
-                  disabled={downloading || results.length === 0}
-                  className="flex-1 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {downloading ? "生成中..." : "下载 Excel"}
-                </button>
-              </div>
+              {!loading && (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setStep("upload");
+                      setResults([]);
+                    }}
+                    className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    返回重新上传
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    disabled={downloading || results.length === 0}
+                    className="flex-1 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {downloading ? "生成中..." : "下载 Excel"}
+                  </button>
+                </div>
+              )}
             </>
           )}
 
@@ -195,7 +236,7 @@ export default function Home() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Powered by Claude Vision + ExcelJS
+          Powered by AI Vision + ExcelJS
         </p>
       </div>
     </main>
