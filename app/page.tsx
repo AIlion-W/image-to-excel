@@ -48,7 +48,13 @@ export default function Home() {
         }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error("服务器响应超时，请稍后重试或减少图片数量");
+      }
       if (!res.ok) throw new Error(data.error);
 
       setResults(data.data);

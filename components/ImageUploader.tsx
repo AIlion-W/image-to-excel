@@ -26,7 +26,7 @@ export default function ImageUploader({ onImagesChange }: Props) {
         newImages.push({
           file,
           base64,
-          mediaType: file.type,
+          mediaType: "image/jpeg",
           preview: URL.createObjectURL(file),
         });
       }
@@ -123,13 +123,29 @@ export default function ImageUploader({ onImagesChange }: Props) {
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // Remove data:image/xxx;base64, prefix
-      resolve(result.split(",")[1]);
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const MAX = 1024;
+      let w = img.width;
+      let h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) {
+          h = Math.round((h * MAX) / w);
+          w = MAX;
+        } else {
+          w = Math.round((w * MAX) / h);
+          h = MAX;
+        }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      resolve(dataUrl.split(",")[1]);
     };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
   });
 }
