@@ -6,9 +6,10 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { images, apiKey: userApiKey } = body as {
+    const { images, apiKey: userApiKey, prompt } = body as {
       images: { base64: string; mediaType: string; fileName: string }[];
       apiKey?: string;
+      prompt?: string;
     };
 
     const apiKey = userApiKey || process.env.CLAUDE_PROXY_KEY;
@@ -33,7 +34,8 @@ export async function POST(request: NextRequest) {
         img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
         apiKey,
         baseURL,
-        model
+        model,
+        prompt
       );
       for (const item of result.items) {
         results.push({ ...item, _fileName: img.fileName });

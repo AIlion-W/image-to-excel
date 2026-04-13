@@ -1,22 +1,15 @@
 "use client";
 
-interface ExtractedItem {
-  货号: string;
-  内装: string;
-  单价: string;
-  尺寸: string;
-  _fileName?: string;
-}
-
 interface Props {
-  data: ExtractedItem[];
-  onDataChange: (data: ExtractedItem[]) => void;
+  data: Record<string, string>[];
+  onDataChange: (data: Record<string, string>[]) => void;
 }
-
-const FIELDS = ["货号", "内装", "单价", "尺寸"] as const;
 
 export default function ResultTable({ data, onDataChange }: Props) {
   if (data.length === 0) return null;
+
+  // 从数据动态获取字段名，排除内部字段
+  const fields = Object.keys(data[0]).filter((k) => !k.startsWith("_"));
 
   const handleCellEdit = (
     rowIndex: number,
@@ -45,7 +38,7 @@ export default function ResultTable({ data, onDataChange }: Props) {
           <thead>
             <tr className="bg-blue-600 text-white">
               <th className="px-4 py-2 text-left">#</th>
-              {FIELDS.map((f) => (
+              {fields.map((f) => (
                 <th key={f} className="px-4 py-2 text-center">
                   {f}
                 </th>
@@ -61,16 +54,16 @@ export default function ResultTable({ data, onDataChange }: Props) {
                 className="border-t hover:bg-gray-50"
               >
                 <td className="px-4 py-2 text-gray-400">{i + 1}</td>
-                {FIELDS.map((field) => (
+                {fields.map((field) => (
                   <td key={field} className="px-2 py-1">
                     <input
                       type="text"
-                      value={(row as unknown as Record<string, string>)[field] || ""}
+                      value={row[field] || ""}
                       onChange={(e) =>
                         handleCellEdit(i, field, e.target.value)
                       }
                       className={`w-full px-2 py-1 text-center border border-transparent rounded hover:border-gray-300 focus:border-blue-500 focus:outline-none ${
-                        (row as unknown as Record<string, string>)[field] === "[待确认]"
+                        row[field] === "[待确认]"
                           ? "text-orange-500 bg-orange-50"
                           : ""
                       }`}

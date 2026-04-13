@@ -2,21 +2,15 @@
 
 import { useState, useCallback } from "react";
 import ApiKeyInput from "@/components/ApiKeyInput";
+import PromptInput from "@/components/PromptInput";
 import ImageUploader, { UploadedImage } from "@/components/ImageUploader";
 import ResultTable from "@/components/ResultTable";
 
-interface ExtractedItem {
-  货号: string;
-  内装: string;
-  单价: string;
-  尺寸: string;
-  _fileName?: string;
-}
-
 export default function Home() {
   const [apiKey, setApiKey] = useState("");
+  const [prompt, setPrompt] = useState("");
   const [images, setImages] = useState<UploadedImage[]>([]);
-  const [results, setResults] = useState<ExtractedItem[]>([]);
+  const [results, setResults] = useState<Record<string, string>[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [downloading, setDownloading] = useState(false);
@@ -25,6 +19,10 @@ export default function Home() {
 
   const handleKeyChange = useCallback((key: string) => {
     setApiKey(key);
+  }, []);
+
+  const handlePromptChange = useCallback((p: string) => {
+    setPrompt(p);
   }, []);
 
   const handleExtract = async () => {
@@ -38,7 +36,7 @@ export default function Home() {
     setStep("result");
     setProgress({ current: 0, total: images.length });
 
-    const allResults: ExtractedItem[] = [];
+    const allResults: Record<string, string>[] = [];
     let failCount = 0;
 
     for (let i = 0; i < images.length; i++) {
@@ -58,6 +56,7 @@ export default function Home() {
               },
             ],
             apiKey: apiKey || undefined,
+            prompt: prompt || undefined,
           }),
         });
 
@@ -141,12 +140,13 @@ export default function Home() {
             产品图片 → Excel
           </h1>
           <p className="text-gray-500 mt-2">
-            上传产品图片，AI 自动识别货号/内装/单价/尺寸，一键生成 Excel 表格
+            上传产品图片，AI 自动识别信息，一键生成 Excel 表格
           </p>
         </div>
 
         <div className="space-y-6 bg-white rounded-2xl shadow-sm border p-6">
           <ApiKeyInput onKeyChange={handleKeyChange} />
+          <PromptInput onPromptChange={handlePromptChange} />
 
           {step === "upload" && (
             <>
