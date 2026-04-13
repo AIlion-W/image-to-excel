@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 interface ExtractedItem {
   货号: string;
   内装: string;
@@ -14,22 +16,36 @@ interface Props {
 }
 
 const FIELDS = ["货号", "内装", "单价", "尺寸"] as const;
+const PAGE_SIZE = 10;
 
 export default function ResultTable({ data, onDataChange }: Props) {
+  const [page, setPage] = useState(0);
+
   if (data.length === 0) return null;
 
+  const totalPages = Math.ceil(data.length / PAGE_SIZE);
+  const start = page * PAGE_SIZE;
+  const pageData = data.slice(start, start + PAGE_SIZE);
+
   const handleCellEdit = (
-    rowIndex: number,
+    localIndex: number,
     field: string,
     value: string
   ) => {
+    const globalIndex = start + localIndex;
     const updated = [...data];
-    updated[rowIndex] = { ...updated[rowIndex], [field]: value };
+    updated[globalIndex] = { ...updated[globalIndex], [field]: value };
     onDataChange(updated);
   };
 
-  const removeRow = (index: number) => {
-    onDataChange(data.filter((_, i) => i !== index));
+  const removeRow = (localIndex: number) => {
+    const globalIndex = start + localIndex;
+    const updated = data.filter((_, i) => i !== globalIndex);
+    onDataChange(updated);
+    // 如果当前页没数据了，回到上一页
+    if (start >= updated.length && page > 0) {
+      setPage(page - 1);
+    }
   };
 
   return (
@@ -55,12 +71,12 @@ export default function ResultTable({ data, onDataChange }: Props) {
             </tr>
           </thead>
           <tbody>
-            {data.map((row, i) => (
+            {pageData.map((row, i) => (
               <tr
-                key={i}
+                key={start + i}
                 className="border-t hover:bg-gray-50"
               >
-                <td className="px-4 py-2 text-gray-400">{i + 1}</td>
+                <td className="px-4 py-2 text-gray-400">{start + i + 1}</td>
                 {FIELDS.map((field) => (
                   <td key={field} className="px-2 py-1">
                     <input
@@ -93,6 +109,38 @@ export default function ResultTable({ data, onDataChange }: Props) {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <button
+            onClick={() => setPage(page - 1)}
+            disabled={page === 0}
+            className="px-3 py-1 text-sm border rounded-lg disabled:opacity-30 hover:bg-gray-50"
+          >
+            上一页
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i}
+              onClick={() => setPage(i)}
+              className={`w-8 h-8 text-sm rounded-lg ${
+                i === page
+                  ? "bg-blue-600 text-white"
+                  : "border hover:bg-gray-50"
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages - 1}
+            className="px-3 py-1 text-sm border rounded-lg disabled:opacity-30 hover:bg-gray-50"
+          >
+            下一页
+          </button>
+        </div>
+      )}
     </div>
   );
 }
