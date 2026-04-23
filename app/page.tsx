@@ -2,13 +2,14 @@
 
 import { useState, useCallback } from "react";
 import ApiKeyInput from "@/components/ApiKeyInput";
-import PromptInput from "@/components/PromptInput";
+import PromptInput, { Mode } from "@/components/PromptInput";
 import ImageUploader, { UploadedImage } from "@/components/ImageUploader";
 import ResultTable from "@/components/ResultTable";
 
 export default function Home() {
   const [apiKey, setApiKey] = useState("");
-  const [prompt, setPrompt] = useState("");
+  const [mode, setMode] = useState<Mode>("baihuo");
+  const [customPrompt, setCustomPrompt] = useState("");
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [results, setResults] = useState<Record<string, string>[]>([]);
   const [loading, setLoading] = useState(false);
@@ -21,9 +22,13 @@ export default function Home() {
     setApiKey(key);
   }, []);
 
-  const handlePromptChange = useCallback((p: string) => {
-    setPrompt(p);
-  }, []);
+  const handlePromptChange = useCallback(
+    (s: { mode: Mode; customPrompt: string }) => {
+      setMode(s.mode);
+      setCustomPrompt(s.customPrompt);
+    },
+    []
+  );
 
   const handleExtract = async () => {
     if (images.length === 0) {
@@ -56,7 +61,8 @@ export default function Home() {
               },
             ],
             apiKey: apiKey || undefined,
-            prompt: prompt || undefined,
+            mode,
+            customPrompt: mode === "custom" ? customPrompt : undefined,
           }),
         });
 
@@ -146,7 +152,7 @@ export default function Home() {
 
         <div className="space-y-6 bg-white rounded-2xl shadow-sm border p-6">
           <ApiKeyInput onKeyChange={handleKeyChange} />
-          <PromptInput onPromptChange={handlePromptChange} />
+          <PromptInput onChange={handlePromptChange} />
 
           {step === "upload" && (
             <>

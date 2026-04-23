@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 
-type Mode = "baihuo" | "fushi" | "custom";
+export type Mode = "baihuo" | "fushi" | "custom";
 
 const LABELS: Record<Mode, string> = {
   baihuo: "百货",
@@ -12,86 +12,44 @@ const LABELS: Record<Mode, string> = {
 
 const ORDER: Mode[] = ["baihuo", "fushi", "custom"];
 
-const PROMPT_URLS: Record<Exclude<Mode, "custom">, string> = {
-  baihuo: "/prompts/baihuo.md",
-  fushi: "/prompts/fushi.md",
-};
-
 const STORAGE = {
   mode: "prompt_mode",
-  text: (m: Mode) => `prompt_text_${m}`,
+  custom: "prompt_text_custom",
 } as const;
 
 interface Props {
-  onPromptChange: (prompt: string) => void;
+  onChange: (state: { mode: Mode; customPrompt: string }) => void;
 }
 
-export default function PromptInput({ onPromptChange }: Props) {
+export default function PromptInput({ onChange }: Props) {
   const [mode, setMode] = useState<Mode>("baihuo");
-  const [prompts, setPrompts] = useState<Record<Mode, string>>({
-    baihuo: "",
-    fushi: "",
-    custom: "",
-  });
+  const [customPrompt, setCustomPrompt] = useState("");
   const [collapsed, setCollapsed] = useState(true);
-  const defaultsRef = useRef<Record<Exclude<Mode, "custom">, string>>({
-    baihuo: "",
-    fushi: "",
-  });
-  const onPromptChangeRef = useRef(onPromptChange);
+  const onChangeRef = useRef(onChange);
 
   useEffect(() => {
-    onPromptChangeRef.current = onPromptChange;
-  }, [onPromptChange]);
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [baihuoDefault, fushiDefault] = await Promise.all(
-        (Object.keys(PROMPT_URLS) as Array<Exclude<Mode, "custom">>).map(
-          async (m) => {
-            const res = await fetch(PROMPT_URLS[m]);
-            return res.ok ? await res.text() : "";
-          },
-        ),
-      );
-      if (cancelled) return;
-
-      defaultsRef.current = { baihuo: baihuoDefault, fushi: fushiDefault };
-
-      const savedMode = (localStorage.getItem(STORAGE.mode) as Mode) || "baihuo";
-      const next: Record<Mode, string> = {
-        baihuo: localStorage.getItem(STORAGE.text("baihuo")) ?? baihuoDefault,
-        fushi: localStorage.getItem(STORAGE.text("fushi")) ?? fushiDefault,
-        custom: localStorage.getItem(STORAGE.text("custom")) ?? "",
-      };
-      setPrompts(next);
-      setMode(savedMode);
-      onPromptChangeRef.current(next[savedMode]);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    const savedMode = (localStorage.getItem(STORAGE.mode) as Mode) || "baihuo";
+    const savedCustom = localStorage.getItem(STORAGE.custom) ?? "";
+    setMode(savedMode);
+    setCustomPrompt(savedCustom);
+    onChangeRef.current({ mode: savedMode, customPrompt: savedCustom });
   }, []);
 
   const switchMode = (m: Mode) => {
     setMode(m);
     localStorage.setItem(STORAGE.mode, m);
-    onPromptChangeRef.current(prompts[m]);
+    onChangeRef.current({ mode: m, customPrompt });
   };
 
-  const handleChange = (val: string) => {
-    setPrompts((prev) => ({ ...prev, [mode]: val }));
-    localStorage.setItem(STORAGE.text(mode), val);
-    onPromptChangeRef.current(val);
+  const handleCustomChange = (val: string) => {
+    setCustomPrompt(val);
+    localStorage.setItem(STORAGE.custom, val);
+    onChangeRef.current({ mode, customPrompt: val });
   };
-
-  const handleReset = () => {
-    if (mode === "custom") return;
-    handleChange(defaultsRef.current[mode]);
-  };
-
-  const canReset = mode !== "custom";
 
   return (
     <div className="space-y-2">
@@ -112,49 +70,40 @@ export default function PromptInput({ onPromptChange }: Props) {
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-      >
-        <span className={`transition-transform ${collapsed ? "" : "rotate-90"}`}>
-          ▶
-        </span>
-        提取规则明细
-        <span className="text-gray-400 font-normal">
-          （当前：{LABELS[mode]}，点击{collapsed ? "展开" : "收起"}查看/编辑）
-        </span>
-      </button>
-
-      {!collapsed && (
+      {mode === "custom" ? (
         <div className="space-y-2">
-          <textarea
-            value={prompts[mode]}
-            onChange={(e) => handleChange(e.target.value)}
-            rows={10}
-            placeholder={
-              mode === "custom"
-                ? "在此输入你自己的提取规则，AI 会按此生成表头和数据..."
-                : "描述你要从图片中提取哪些字段..."
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-          />
-          <div className="flex justify-between items-center">
-            <p className="text-xs text-gray-400">
-              {mode === "custom"
-                ? "自定义模式：无内置模板，改动会自动保存"
-                : "可修改此模板，改动会自动保存；恢复默认会覆盖当前模板"}
-            </p>
-            <button
-              type="button"
-              onClick={handleReset}
-              disabled={!canReset}
-              className="text-xs text-blue-500 hover:text-blue-700 disabled:text-gray-300 disabled:cursor-not-allowed"
-            >
-              恢复默认
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+          >
+            <span className={`transition-transform ${collapsed ? "" : "rotate-90"}`}>
+              ▶
+            </span>
+            自定义提取规则
+            <span className="text-gray-400 font-normal">
+              （点击{collapsed ? "展开" : "收起"}编辑）
+            </span>
+          </button>
+          {!collapsed && (
+            <div className="space-y-2">
+              <textarea
+                value={customPrompt}
+                onChange={(e) => handleCustomChange(e.target.value)}
+                rows={10}
+                placeholder="在此输入你自己的提取规则，AI 会按此生成表头和数据..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+              />
+              <p className="text-xs text-gray-400">
+                自定义模式：改动会自动保存
+              </p>
+            </div>
+          )}
         </div>
+      ) : (
+        <p className="text-xs text-gray-400">
+          当前使用「{LABELS[mode]}」内置规则（由服务端维护，不可编辑）
+        </p>
       )}
     </div>
   );
