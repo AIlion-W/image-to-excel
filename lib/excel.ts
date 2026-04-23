@@ -13,7 +13,11 @@ export async function generateExcel(rows: ExcelRow[]): Promise<Buffer> {
 
   // 从数据动态获取字段（排除内部字段）
   const dataFields = Object.keys(rows[0]).filter(
-    (k) => !k.startsWith("_") && k !== "imageBase64" && k !== "imageMediaType"
+    (k) =>
+      !k.startsWith("_") &&
+      k !== "imageBase64" &&
+      k !== "imageMediaType" &&
+      k !== "图片"
   );
 
   // 列定义：图片 + 动态字段

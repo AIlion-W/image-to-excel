@@ -27,8 +27,14 @@ export async function POST(request: NextRequest) {
     }
 
     const resolvedMode: PromptMode = mode ?? "baihuo";
-    let prompt: string | undefined;
+    let prompt: string;
     if (resolvedMode === "custom") {
+      if (!customPrompt) {
+        return NextResponse.json(
+          { error: "自定义模式需要提供提示词" },
+          { status: 400 }
+        );
+      }
       prompt = customPrompt;
     } else {
       prompt = await loadPrompt(resolvedMode);
@@ -43,9 +49,9 @@ export async function POST(request: NextRequest) {
         img.base64,
         img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
         apiKey,
+        prompt,
         baseURL,
-        model,
-        prompt
+        model
       );
       for (const item of result.items) {
         results.push({ ...item, _fileName: img.fileName });
