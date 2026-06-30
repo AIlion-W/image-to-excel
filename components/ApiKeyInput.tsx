@@ -19,10 +19,9 @@ export default function ApiKeyInput({ onKeyChange }: Props) {
   }, [onKeyChange]);
 
   const handleChange = (val: string) => {
-    const normalized = val.trim();
-    setKey(normalized);
-    localStorage.setItem("anthropic_api_key", normalized);
-    onKeyChange(normalized);
+    setKey(val);
+    localStorage.setItem("anthropic_api_key", val);
+    onKeyChange(val);
   };
 
   return (
