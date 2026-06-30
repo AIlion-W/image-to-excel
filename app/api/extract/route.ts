@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       customPrompt?: string;
     };
 
-    const apiKey = userApiKey || process.env.CLAUDE_PROXY_KEY;
+    const apiKey = userApiKey?.trim() || process.env.CLAUDE_PROXY_KEY?.trim();
     if (!apiKey) {
       return NextResponse.json(
         { error: "请提供 API Key" },
