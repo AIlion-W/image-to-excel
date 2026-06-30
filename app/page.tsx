@@ -43,6 +43,7 @@ export default function Home() {
 
     const allResults: Record<string, string>[] = [];
     let failCount = 0;
+    const failureMessages: string[] = [];
 
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
@@ -72,10 +73,12 @@ export default function Home() {
           data = JSON.parse(text);
         } catch {
           failCount++;
+          failureMessages.push(text || "接口返回格式异常");
           continue;
         }
         if (!res.ok) {
           failCount++;
+          failureMessages.push(data.error || "识别接口请求失败");
           continue;
         }
 
@@ -83,15 +86,27 @@ export default function Home() {
           allResults.push(item);
         }
         setResults([...allResults]);
-      } catch {
+      } catch (err: unknown) {
         failCount++;
+        failureMessages.push(
+          err instanceof Error ? err.message : "网络请求失败"
+        );
       }
     }
 
+    const uniqueFailureMessages = Array.from(new Set(failureMessages)).filter(
+      Boolean
+    );
+    const failureMessage = uniqueFailureMessages.slice(0, 2).join("；");
+
     if (failCount > 0 && allResults.length > 0) {
-      setError(`${failCount} 张图片识别失败，其余 ${allResults.length} 条已完成`);
+      setError(
+        `${failCount} 张图片识别失败，其余 ${allResults.length} 条已完成${
+          failureMessage ? `：${failureMessage}` : ""
+        }`
+      );
     } else if (allResults.length === 0) {
-      setError("全部识别失败，请检查网络或稍后重试");
+      setError(failureMessage || "全部识别失败，请检查网络或稍后重试");
       setStep("upload");
     }
 
