@@ -35,11 +35,9 @@ export default function PromptInput({ onChange }: Props) {
   useEffect(() => {
     const savedMode = (localStorage.getItem(STORAGE.mode) as Mode) || "baihuo";
     const savedCustom = localStorage.getItem(STORAGE.custom) ?? "";
-    queueMicrotask(() => {
-      setMode(savedMode);
-      setCustomPrompt(savedCustom);
-      onChangeRef.current({ mode: savedMode, customPrompt: savedCustom });
-    });
+    setMode(savedMode);
+    setCustomPrompt(savedCustom);
+    onChangeRef.current({ mode: savedMode, customPrompt: savedCustom });
   }, []);
 
   const switchMode = (m: Mode) => {

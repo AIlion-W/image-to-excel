@@ -146,7 +146,7 @@ export default function Home() {
             产品图片 → Excel
           </h1>
           <p className="text-gray-500 mt-2">
-            上传产品图片，AI 自动识别货号、容量、单价、尺码，一键生成 Excel 表格
+            上传产品图片，AI 自动识别信息，一键生成 Excel 表格
           </p>
         </div>
 
