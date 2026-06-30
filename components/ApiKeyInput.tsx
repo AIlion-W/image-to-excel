@@ -12,8 +12,10 @@ export default function ApiKeyInput({ onKeyChange }: Props) {
 
   useEffect(() => {
     const saved = localStorage.getItem("anthropic_api_key") || "";
-    setKey(saved);
-    onKeyChange(saved);
+    queueMicrotask(() => {
+      setKey(saved);
+      onKeyChange(saved);
+    });
   }, [onKeyChange]);
 
   const handleChange = (val: string) => {

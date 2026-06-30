@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useRef } from "react";
 
-export type Mode = "baihuo" | "fushi" | "custom";
+export type Mode = "baihuo" | "fushi" | "neiyi" | "custom";
 
 const LABELS: Record<Mode, string> = {
   baihuo: "百货",
   fushi: "服饰鞋帽",
+  neiyi: "内衣",
   custom: "自定义",
 };
 
-const ORDER: Mode[] = ["baihuo", "fushi", "custom"];
+const ORDER: Mode[] = ["baihuo", "fushi", "neiyi", "custom"];
 
 const STORAGE = {
   mode: "prompt_mode",
@@ -34,9 +35,11 @@ export default function PromptInput({ onChange }: Props) {
   useEffect(() => {
     const savedMode = (localStorage.getItem(STORAGE.mode) as Mode) || "baihuo";
     const savedCustom = localStorage.getItem(STORAGE.custom) ?? "";
-    setMode(savedMode);
-    setCustomPrompt(savedCustom);
-    onChangeRef.current({ mode: savedMode, customPrompt: savedCustom });
+    queueMicrotask(() => {
+      setMode(savedMode);
+      setCustomPrompt(savedCustom);
+      onChangeRef.current({ mode: savedMode, customPrompt: savedCustom });
+    });
   }, []);
 
   const switchMode = (m: Mode) => {
