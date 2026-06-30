@@ -1,45 +1,45 @@
-# Neiyi Image Extraction Mode Implementation Plan
+# 内衣图片提取模式实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **给执行代理：** 必须使用子技能 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans` 按任务逐项执行本计划。所有步骤都使用复选框（`- [ ]`）便于跟踪。
 
-**Goal:** Add an independent built-in "内衣" extraction mode that converts one underwear product image into one Excel row with product number, carton capacity, target price, and size.
+**目标：** 新增一个独立的内置「内衣」识别模式，把一张内衣商品图转换成一行 Excel 数据，字段包含产品编号、外箱容量、客户意向价和尺码。
 
-**Architecture:** Keep the existing prompt-driven extraction pipeline. Add a new `neiyi` mode to the front-end selector and server prompt loader, then create `lib/prompts/neiyi.md` with the new extraction rules. Use a small static regression test to protect the wiring and prompt requirements because the project currently has no test runner.
+**架构：** 沿用现有的 prompt-driven 图片识别链路。前端模式选择器和服务端 prompt loader 新增 `neiyi` 模式，再创建 `lib/prompts/neiyi.md` 保存内衣提取规则。项目当前没有测试框架，因此新增一个轻量静态回归测试，保护模式接线和 prompt 关键要求。
 
-**Tech Stack:** Next.js 16 App Router, React 19, TypeScript, Markdown prompt files, Node.js static test, existing `/api/extract` and `/api/generate-excel` routes.
+**技术栈：** Next.js 16 App Router、React 19、TypeScript、Markdown prompt 文件、Node.js 静态测试、现有 `/api/extract` 和 `/api/generate-excel` 路由。
 
 ---
 
-## Scope Check
+## 范围检查
 
-The approved spec covers one focused subsystem: adding a new built-in extraction mode. It does not require a new API, database, account flow, storage layer, or Excel generator rewrite. This can be implemented as one plan.
+已确认的 spec 只覆盖一个聚焦子系统：新增一个内置识别模式。它不需要新增 API、数据库、账号流程、存储层，也不需要重写 Excel 生成器。可以作为一个完整实现计划执行。
 
-## File Structure
+## 文件结构
 
-- Create `tests/static/neiyi-mode.test.mjs`
-  - Static regression test for mode wiring and prompt content.
-- Modify `package.json`
-  - Add `test:neiyi` script so the static regression test is easy to run.
-- Create `lib/prompts/neiyi.md`
-  - Prompt rules for one-image-one-row underwear extraction.
-- Modify `lib/serverPrompts.ts`
-  - Add `neiyi` to `PromptMode` and map it to `neiyi.md`.
-- Modify `components/PromptInput.tsx`
-  - Add the "内衣" button and make `neiyi` a valid front-end mode.
-- Modify `app/page.tsx`
-  - Update the short page subtitle so it includes size/capacity/price wording.
-- Modify `app/layout.tsx`
-  - Align metadata description with the expanded supported fields.
+- 新建 `tests/static/neiyi-mode.test.mjs`
+  - 静态回归测试，用于检查模式接线和 prompt 关键内容。
+- 修改 `package.json`
+  - 增加 `test:neiyi` 脚本，方便运行静态回归测试。
+- 新建 `lib/prompts/neiyi.md`
+  - 内衣图片「一图一行」提取规则。
+- 修改 `lib/serverPrompts.ts`
+  - 在 `PromptMode` 中加入 `neiyi`，并映射到 `neiyi.md`。
+- 修改 `components/PromptInput.tsx`
+  - 新增「内衣」按钮，并让 `neiyi` 成为合法前端模式。
+- 修改 `app/page.tsx`
+  - 更新首页副标题，让文案覆盖尺码、容量和单价。
+- 修改 `app/layout.tsx`
+  - 更新 metadata description，让它和新增字段范围一致。
 
-## Task 1: Add Static Regression Test
+## 任务 1：新增静态回归测试
 
-**Files:**
-- Create: `tests/static/neiyi-mode.test.mjs`
-- Modify: `package.json`
+**文件：**
+- 新建：`tests/static/neiyi-mode.test.mjs`
+- 修改：`package.json`
 
-- [ ] **Step 1: Create the static test file**
+- [ ] **步骤 1：创建静态测试文件**
 
-Create `tests/static/neiyi-mode.test.mjs` with this content:
+创建 `tests/static/neiyi-mode.test.mjs`，内容如下：
 
 ```js
 import assert from "node:assert/strict";
@@ -53,7 +53,7 @@ function readProjectFile(path) {
 }
 
 const promptPath = join(root, "lib/prompts/neiyi.md");
-assert.ok(existsSync(promptPath), "neiyi prompt file should exist");
+assert.ok(existsSync(promptPath), "应存在 neiyi prompt 文件");
 
 const prompt = readFileSync(promptPath, "utf8");
 for (const requiredText of [
@@ -72,7 +72,7 @@ for (const requiredText of [
 ]) {
   assert.ok(
     prompt.includes(requiredText),
-    `neiyi prompt should include ${requiredText}`
+    `neiyi prompt 应包含 ${requiredText}`
   );
 }
 
@@ -80,51 +80,51 @@ const serverPrompts = readProjectFile("lib/serverPrompts.ts");
 assert.match(
   serverPrompts,
   /export type PromptMode = "baihuo" \| "fushi" \| "neiyi" \| "custom";/,
-  "PromptMode union should include neiyi before custom"
+  "PromptMode 联合类型应在 custom 前包含 neiyi"
 );
 assert.match(
   serverPrompts,
   /neiyi:\s*"neiyi\.md"/,
-  "FILES map should load neiyi.md"
+  "FILES 映射应加载 neiyi.md"
 );
 
 const promptInput = readProjectFile("components/PromptInput.tsx");
 assert.match(
   promptInput,
   /export type Mode = "baihuo" \| "fushi" \| "neiyi" \| "custom";/,
-  "front-end Mode union should include neiyi before custom"
+  "前端 Mode 联合类型应在 custom 前包含 neiyi"
 );
 assert.match(
   promptInput,
   /neiyi:\s*"内衣"/,
-  "PromptInput labels should show 内衣"
+  "PromptInput 标签应显示内衣"
 );
 assert.match(
   promptInput,
   /const ORDER: Mode\[\] = \["baihuo", "fushi", "neiyi", "custom"\];/,
-  "PromptInput order should expose 内衣 before custom"
+  "PromptInput 排序应在自定义前显示内衣"
 );
 
-console.log("neiyi mode static checks passed");
+console.log("内衣模式静态检查通过");
 ```
 
-- [ ] **Step 2: Run the static test and verify it fails for the right reason**
+- [ ] **步骤 2：运行静态测试，确认它以正确原因失败**
 
-Run:
+运行：
 
 ```bash
 node tests/static/neiyi-mode.test.mjs
 ```
 
-Expected: FAIL with an assertion containing:
+预期：失败，断言信息包含：
 
 ```text
-neiyi prompt file should exist
+应存在 neiyi prompt 文件
 ```
 
-- [ ] **Step 3: Add a package script for the static test**
+- [ ] **步骤 3：新增 package 测试脚本**
 
-In `package.json`, replace the current `scripts` block with:
+在 `package.json` 中，将当前 `scripts` 块替换为：
 
 ```json
 "scripts": {
@@ -136,29 +136,29 @@ In `package.json`, replace the current `scripts` block with:
 }
 ```
 
-- [ ] **Step 4: Run the package script and verify the test still fails for missing prompt**
+- [ ] **步骤 4：运行 package 脚本，确认仍因缺少 prompt 失败**
 
-Run:
+运行：
 
 ```bash
 npm run test:neiyi
 ```
 
-Expected: FAIL with an assertion containing:
+预期：失败，断言信息包含：
 
 ```text
-neiyi prompt file should exist
+应存在 neiyi prompt 文件
 ```
 
-## Task 2: Add the 内衣 Prompt
+## 任务 2：新增「内衣」Prompt
 
-**Files:**
-- Create: `lib/prompts/neiyi.md`
-- Test: `tests/static/neiyi-mode.test.mjs`
+**文件：**
+- 新建：`lib/prompts/neiyi.md`
+- 测试：`tests/static/neiyi-mode.test.mjs`
 
-- [ ] **Step 1: Create the prompt file**
+- [ ] **步骤 1：创建 prompt 文件**
 
-Create `lib/prompts/neiyi.md` with this content:
+创建 `lib/prompts/neiyi.md`，内容如下：
 
 ```markdown
 # 内衣商品图片提取提示词
@@ -270,29 +270,29 @@ Create `lib/prompts/neiyi.md` with this content:
 - 是否没有输出「图片」字段？
 ```
 
-- [ ] **Step 2: Run the static test and verify the next expected failure**
+- [ ] **步骤 2：运行静态测试，确认进入下一个预期失败**
 
-Run:
+运行：
 
 ```bash
 npm run test:neiyi
 ```
 
-Expected: FAIL with an assertion containing:
+预期：失败，断言信息包含：
 
 ```text
-PromptMode union should include neiyi before custom
+PromptMode 联合类型应在 custom 前包含 neiyi
 ```
 
-## Task 3: Wire Server Prompt Loading
+## 任务 3：接入服务端 Prompt 加载
 
-**Files:**
-- Modify: `lib/serverPrompts.ts`
-- Test: `tests/static/neiyi-mode.test.mjs`
+**文件：**
+- 修改：`lib/serverPrompts.ts`
+- 测试：`tests/static/neiyi-mode.test.mjs`
 
-- [ ] **Step 1: Replace server prompt mode definitions**
+- [ ] **步骤 1：替换服务端 prompt 模式定义**
 
-Replace the full contents of `lib/serverPrompts.ts` with:
+将 `lib/serverPrompts.ts` 的完整内容替换为：
 
 ```ts
 import { readFile } from "fs/promises";
@@ -320,29 +320,29 @@ export async function loadPrompt(
 }
 ```
 
-- [ ] **Step 2: Run the static test and verify the front-end wiring failure**
+- [ ] **步骤 2：运行静态测试，确认进入前端接线失败**
 
-Run:
+运行：
 
 ```bash
 npm run test:neiyi
 ```
 
-Expected: FAIL with an assertion containing:
+预期：失败，断言信息包含：
 
 ```text
-front-end Mode union should include neiyi before custom
+前端 Mode 联合类型应在 custom 前包含 neiyi
 ```
 
-## Task 4: Wire Front-End Mode Selection
+## 任务 4：接入前端模式选择
 
-**Files:**
-- Modify: `components/PromptInput.tsx`
-- Test: `tests/static/neiyi-mode.test.mjs`
+**文件：**
+- 修改：`components/PromptInput.tsx`
+- 测试：`tests/static/neiyi-mode.test.mjs`
 
-- [ ] **Step 1: Replace the mode declarations in `PromptInput`**
+- [ ] **步骤 1：替换 `PromptInput` 中的模式声明**
 
-In `components/PromptInput.tsx`, replace lines 5-13 with:
+在 `components/PromptInput.tsx` 中，将第 5-13 行替换为：
 
 ```ts
 export type Mode = "baihuo" | "fushi" | "neiyi" | "custom";
@@ -357,50 +357,50 @@ const LABELS: Record<Mode, string> = {
 const ORDER: Mode[] = ["baihuo", "fushi", "neiyi", "custom"];
 ```
 
-- [ ] **Step 2: Run the static test and verify it passes**
+- [ ] **步骤 2：运行静态测试，确认通过**
 
-Run:
+运行：
 
 ```bash
 npm run test:neiyi
 ```
 
-Expected: PASS with:
+预期：通过并输出：
 
 ```text
-neiyi mode static checks passed
+内衣模式静态检查通过
 ```
 
-- [ ] **Step 3: Run lint**
+- [ ] **步骤 3：运行 lint**
 
-Run:
+运行：
 
 ```bash
 npm run lint
 ```
 
-Expected: PASS with no ESLint errors.
+预期：通过，没有 ESLint 错误。
 
-- [ ] **Step 4: Commit the tested mode wiring**
+- [ ] **步骤 4：提交已测试的模式接线**
 
-Run:
+运行：
 
 ```bash
 git add package.json tests/static/neiyi-mode.test.mjs lib/prompts/neiyi.md lib/serverPrompts.ts components/PromptInput.tsx
 git commit -m "feat: add neiyi extraction mode"
 ```
 
-Expected: commit succeeds.
+预期：提交成功。
 
-## Task 5: Align User-Facing Copy
+## 任务 5：对齐用户可见文案
 
-**Files:**
-- Modify: `app/page.tsx:148-150`
-- Modify: `app/layout.tsx`
+**文件：**
+- 修改：`app/page.tsx:148-150`
+- 修改：`app/layout.tsx`
 
-- [ ] **Step 1: Update the homepage subtitle**
+- [ ] **步骤 1：更新首页副标题**
 
-In `app/page.tsx`, replace the paragraph at lines 148-150 with:
+在 `app/page.tsx` 中，将第 148-150 行的段落替换为：
 
 ```tsx
 <p className="text-gray-500 mt-2">
@@ -408,48 +408,48 @@ In `app/page.tsx`, replace the paragraph at lines 148-150 with:
 </p>
 ```
 
-- [ ] **Step 2: Update metadata description**
+- [ ] **步骤 2：更新 metadata description**
 
-In `app/layout.tsx`, replace the `description` value with:
+在 `app/layout.tsx` 中，将 `description` 的值替换为：
 
 ```ts
 description: "上传产品图片，AI 自动识别货号、容量、单价、尺码，一键生成 Excel 表格",
 ```
 
-- [ ] **Step 3: Run static test and lint**
+- [ ] **步骤 3：运行静态测试和 lint**
 
-Run:
+运行：
 
 ```bash
 npm run test:neiyi
 npm run lint
 ```
 
-Expected: both commands pass. `npm run test:neiyi` prints:
+预期：两个命令都通过。`npm run test:neiyi` 输出：
 
 ```text
-neiyi mode static checks passed
+内衣模式静态检查通过
 ```
 
-- [ ] **Step 4: Commit the copy update**
+- [ ] **步骤 4：提交文案更新**
 
-Run:
+运行：
 
 ```bash
 git add app/page.tsx app/layout.tsx
 git commit -m "chore: update image extraction copy"
 ```
 
-Expected: commit succeeds.
+预期：提交成功。
 
-## Task 6: Build and Manual Acceptance Check
+## 任务 6：构建与人工验收
 
-**Files:**
-- No required file changes.
+**文件：**
+- 不需要改文件。
 
-- [ ] **Step 1: Run full local verification commands**
+- [ ] **步骤 1：运行完整本地验证命令**
 
-Run:
+运行：
 
 ```bash
 npm run test:neiyi
@@ -457,77 +457,77 @@ npm run lint
 npm run build
 ```
 
-Expected:
+预期：
 
-- `npm run test:neiyi` prints `neiyi mode static checks passed`.
-- `npm run lint` exits with no ESLint errors.
-- `npm run build` completes successfully.
+- `npm run test:neiyi` 输出 `内衣模式静态检查通过`。
+- `npm run lint` 没有 ESLint 错误。
+- `npm run build` 成功完成。
 
-- [ ] **Step 2: Start the dev server**
+- [ ] **步骤 2：启动开发服务器**
 
-Run:
+运行：
 
 ```bash
 npm run dev
 ```
 
-Expected: Next.js starts and prints a local URL, normally:
+预期：Next.js 启动并输出本地 URL，通常是：
 
 ```text
 http://localhost:3000
 ```
 
-- [ ] **Step 3: Verify UI mode selection**
+- [ ] **步骤 3：验证 UI 模式选择**
 
-Open the local URL in a browser.
+在浏览器打开本地 URL。
 
-Expected:
+预期：
 
-- The mode selector shows four buttons: `百货`, `服饰鞋帽`, `内衣`, `自定义`.
-- Clicking `内衣` highlights it.
-- The helper text shows `当前使用「内衣」内置规则（由服务端维护，不可编辑）`.
+- 模式选择器显示四个按钮：`百货`、`服饰鞋帽`、`内衣`、`自定义`。
+- 点击 `内衣` 后，该按钮高亮。
+- 辅助文字显示 `当前使用「内衣」内置规则（由服务端维护，不可编辑）`。
 
-- [ ] **Step 4: Verify sample extraction manually**
+- [ ] **步骤 4：用样例图片人工验证提取结果**
 
-Use this sample image:
+使用这张样例图片：
 
 ```text
 /Users/wangxinlong/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/wxid_tdpdklyr44gz22_76a7/temp/RWTemp/2026-06/34619b952756fe00300de515919fb9a4.png
 ```
 
-Select `内衣`, upload the image, and run extraction with a working API key or configured `CLAUDE_PROXY_KEY`.
+选择 `内衣`，上传图片，并在有可用 API Key 或已配置 `CLAUDE_PROXY_KEY` 的情况下开始识别。
 
-Expected table result:
+预期表格结果：
 
 | 产品编号 | 外箱容量 | 客户意向价 | 做货要求一 | 箱    数 | 做货要求二 |
 | --- | --- | --- | --- | --- | --- |
 | M010# | 1500 | 3.7 | M L XL |  |  |
 
-- [ ] **Step 5: Verify Excel export**
+- [ ] **步骤 5：验证 Excel 导出**
 
-Click `下载 Excel`.
+点击 `下载 Excel`。
 
-Expected:
+预期：
 
-- The file downloads as `product_list.xlsx`.
-- The first column header remains `图片`.
-- The generated row contains the embedded product image.
-- The data columns include `产品编号`, `外箱容量`, `客户意向价`, `做货要求一`, `箱    数`, `做货要求二`.
-- `箱    数` and `做货要求二` cells are blank for the sample row.
+- 文件下载为 `product_list.xlsx`。
+- 第一列表头仍是「图片」。
+- 生成行包含嵌入的产品图片。
+- 数据列包含 `产品编号`、`外箱容量`、`客户意向价`、`做货要求一`、`箱    数`、`做货要求二`。
+- 样例行的 `箱    数` 和 `做货要求二` 为空。
 
-- [ ] **Step 6: Commit verification fixes if any were needed**
+- [ ] **步骤 6：如验证中需要修复，提交修复**
 
-If manual verification required code or prompt fixes, run:
+如果人工验证过程中改了代码或 prompt，运行：
 
 ```bash
 git add components/PromptInput.tsx lib/serverPrompts.ts lib/prompts/neiyi.md app/page.tsx app/layout.tsx tests/static/neiyi-mode.test.mjs package.json
 git commit -m "fix: refine neiyi extraction verification"
 ```
 
-Expected: commit succeeds only if files changed. If no files changed, skip this command.
+预期：只有在确实有文件变更时才提交成功。如果没有文件变更，跳过这个命令。
 
-## Plan Self-Review
+## 计划自检
 
-- Spec coverage: the plan adds a standalone `neiyi` mode, preserves existing modes, preserves the Excel `图片` column, keeps one image to one row, leaves `箱    数` and `做货要求二` empty, and validates with the provided sample image.
-- Completeness scan: this plan contains no undefined implementation gaps.
-- Type consistency: `neiyi` is used consistently in the front-end `Mode`, server `PromptMode`, prompt filename, static test, and API payload path through existing `mode` state.
+- Spec 覆盖：本计划新增独立 `neiyi` 模式，保留现有模式，保留 Excel 的「图片」列，坚持一图一行，让 `箱    数` 和 `做货要求二` 为空，并用用户提供的样例图片验收。
+- 完整性扫描：本计划没有未定义的实现缺口。
+- 类型一致性：`neiyi` 在前端 `Mode`、服务端 `PromptMode`、prompt 文件名、静态测试和现有 API payload 的 `mode` 状态中保持一致。
