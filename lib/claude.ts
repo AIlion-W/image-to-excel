@@ -29,6 +29,34 @@ function isOpenAIModel(model: string): boolean {
   return model.startsWith("gpt-") || model.startsWith("o1") || model.startsWith("o3") || model.startsWith("o4");
 }
 
+function normalizeProviderError(errorText: string): string {
+  let message = errorText.trim();
+
+  try {
+    const parsed = JSON.parse(message);
+    if (typeof parsed?.error?.message === "string") {
+      message = parsed.error.message;
+    } else if (typeof parsed?.message === "string") {
+      message = parsed.message;
+    } else if (typeof parsed?.error === "string") {
+      message = parsed.error;
+    }
+  } catch {
+    // Some proxy providers return plain text; keep it as-is.
+  }
+
+  if (
+    message.includes("invalid x-api-key") ||
+    message.includes("invalid_api_key") ||
+    message.includes("Incorrect API key") ||
+    message.includes("authentication_error")
+  ) {
+    return "API Key 无效：请检查顶部输入的 Key 是否正确，或清空后改用系统默认 Key。";
+  }
+
+  return message || "模型服务请求失败";
+}
+
 async function callOpenAI(
   imageBase64: string,
   mediaType: string,
@@ -68,7 +96,7 @@ async function callOpenAI(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(err);
+    throw new Error(normalizeProviderError(err));
   }
 
   const data = await res.json();
@@ -117,7 +145,7 @@ async function callClaude(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(err);
+    throw new Error(normalizeProviderError(err));
   }
 
   const data = await res.json();
