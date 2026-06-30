@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:neiyi": "node tests/static/neiyi-mode.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
